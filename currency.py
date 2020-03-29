@@ -3,9 +3,18 @@
 
 from workflow import Workflow, web
 from lxml import etree
-import sys
+import sys,os
 
-
+# eg: cvt 100 
+def calc(amount,datas):
+    res = list()
+    for data in datas:
+        t_dic = dict()
+        total = float(amount) * (100 / float(data['hui_sell']))
+        t_dic['type'] = data['type']
+        t_dic['total'] = float("{0:.4f}".format(total))
+        res.append(t_dic)
+    return res
 
 def get_html():
     import requests
@@ -36,19 +45,40 @@ def get_html():
         return -1
 
 def main(wf):
-    if len(wf.args):
-         query = 1
-         amount = wf.args[0]
-         itype = wf.args[1]
-    else:
-         query = 0
-    if not query:
-        datas = wf.cached_data('data',get_html,max_age=60)
+    args = ''.join(wf.args)
+    datas = wf.cached_data('data', get_html, max_age=300)
+
+    if not len(args):
         for data in datas:
-            wf.add_item(title='100 '+data['type']+' = '+data['hui_sell']+' CNY',subtitle='Update Time: '+data['update_time'])
-        wf.add_item(title=u'转到中行外汇牌价页',subtitle="www.boc.cn/sourcedb/whpj/",valid=True)
+            wf.add_item(title='100 '+data['type']+' = '+data['hui_sell']+' CNY',subtitle='Update Time: '+data['update_time'],icon='icon/{0}.png'.format(data['type']),valid='yes',arg = str(data['hui_sell']))
+       
     else:
-        print(amount,itype)
+        args = args.strip(" ").split(" ")
+        args = [e.upper() for e in args]
+        if len(args) == 1:
+            if args[0].replace('.', '', 1).isdigit():
+                amount = args[0]
+                res = calc(amount,datas)
+                for item in res:
+                    wf.add_item(title = '= ' + str(item['total'])+ " " + item['type'],icon='icon/{0}.png'.format(item['type']),valid='yes',arg = str(item['total']))
+            else:
+                return -1 # 输入有误
+        elif len(args) == 2:
+            t = 2
+        else:
+            wf.add_item('Type \'cvt -h\' for more info')
+    # temp = ''.join()
+    # args = temp.strip(" ").split(" ")
+    # if len(args) == 0:
+
+
+            
+    # elif len(args) == 1:
+    #     args = args
+    # elif len(args) == 2:
+    #     args = args
+    
+    
     wf.send_feedback()
 
 
