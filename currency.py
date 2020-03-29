@@ -1,14 +1,17 @@
 #!/usr/bin/python
 # encoding: utf-8
 
-from workflow import Workflow3, web
+from workflow import Workflow, web
 from lxml import etree
-import requests,sys
+import sys
 
-from requests.packages.urllib3.exceptions import InsecureRequestWarning
-requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
+
 
 def get_html():
+    import requests
+    from requests.packages.urllib3.exceptions import InsecureRequestWarning
+    requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
+
     url = 'https://www.boc.cn/sourcedb/whpj/'
     cur_dic={'澳大利亚元':'AUD','港币':'HKD','日元':'JPY','美元':'USD'}
     curlist = list()
@@ -26,23 +29,32 @@ def get_html():
                 t_dict = dict()
                 t_dict['type'] = cur_dic[cur_name]
                 t_dict['hui_sell'] = td[3].text
-                t_dict['update_time'] = td[6].text
+                t_dict['update_time'] = td[6].text[2:]
                 curlist.append(t_dict)
         return curlist
     except requests.exceptions.ConnectionError as e:
         return -1
 
 def main(wf):
-    
-    datas = wf.cached_data('data',get_html,max_age=60)
-    for data in datas:
-         wf.add_item(title='100 '+data['type']+' = '+data['hui_sell']+' CNY',subtitle='更新时间：'+data['update_time'])
+    if len(wf.args):
+         query = 1
+         amount = wf.args[0]
+         itype = wf.args[1]
+    else:
+         query = 0
+    if not query:
+        datas = wf.cached_data('data',get_html,max_age=60)
+        for data in datas:
+            wf.add_item(title='100 '+data['type']+' = '+data['hui_sell']+' CNY',subtitle='Update Time: '+data['update_time'])
+        wf.add_item(title=u'转到中行外汇牌价页',subtitle="www.boc.cn/sourcedb/whpj/",valid=True)
+    else:
+        print(amount,itype)
     wf.send_feedback()
 
 
 
 if __name__ == '__main__':
-    wf = Workflow3()
+    wf = Workflow(libraries=['./lib'])
     sys.exit(wf.run(main))
     print()
 
