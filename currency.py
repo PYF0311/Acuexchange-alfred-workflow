@@ -1,9 +1,12 @@
 #!/usr/bin/python
 # encoding: utf-8
 
-from workflow import Workflow, web
-from lxml import etree
+from workflow import Workflow, web, ICON_WARNING
 import sys,os
+from lxml import etree
+
+global cur_dic
+cur_dic={'澳大利亚元':'AUD','港币':'HKD','日元':'JPY','美元':'USD'}
 
 # eg: cvt 100 
 def calc(amount,datas):
@@ -16,13 +19,23 @@ def calc(amount,datas):
         res.append(t_dic)
     return res
 
+# eg: cvt 100 usd
+def exchange(amount, ctype, datas):
+    res = dict()
+    for data in datas:
+        if data['type'] == ctype:
+            total = float(amount) * (float(data['hui_sell']) / 100)
+            res['total'] = float("{0:.4f}".format(total))
+            res['type'] = 'CNY'
+
+    return res
+
 def get_html():
     import requests
     from requests.packages.urllib3.exceptions import InsecureRequestWarning
     requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 
     url = 'https://www.boc.cn/sourcedb/whpj/'
-    cur_dic={'澳大利亚元':'AUD','港币':'HKD','日元':'JPY','美元':'USD'}
     curlist = list()
     headers = {"Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3","Accept-Encoding": "gzip, deflate","Accept-Language": "zh-CN,zh;q=0.9,ja;q=0.8,zh-TW;q=0.7,en;q=0.6","Cache-Control": "no-cache","Connection": "keep-alive","Pragma": "no-cache","Upgrade-Insecure-Requests": "1","User-Agent": "Mozilla/5.0 (iPad; CPU OS 11_0 like Mac OS X) AppleWebKit/604.1.34 (KHTML, like Gecko) Version/11.0 Mobile/15A5341f Safari/604.1"}
     
@@ -54,30 +67,32 @@ def main(wf):
        
     else:
         args = args.strip(" ").split(" ")
-        args = [e.upper() for e in args]
+        
         if len(args) == 1:
-            if args[0].replace('.', '', 1).isdigit():
+            if str(args[0]) == u'-h':
+                wf.add_item(title = 'cvt', subtitle='Display the latest exchange rate from BOC.',icon='icon/Quest.png')
+                wf.add_item(title = 'cvt 100', subtitle='Convert 100 CNY to other currency type.',icon='icon/Quest.png')
+                wf.add_item(title = 'cvt 100 usd', subtitle='Convert 100 usd to equivalent amount of RMB',icon='icon/Quest.png')
+                wf.add_item(title = "You can change the currency type in './config.json'",subtitle='Default type includes AUD,USD,HKD,JPY',icon='icon/Quest.png')
+            elif args[0].replace('.', '', 1).isdigit():
                 amount = args[0]
                 res = calc(amount,datas)
                 for item in res:
                     wf.add_item(title = '= ' + str(item['total'])+ " " + item['type'],icon='icon/{0}.png'.format(item['type']),valid='yes',arg = str(item['total']))
             else:
-                return -1 # 输入有误
+                wf.add_item(title = 'Invalid input', subtitle='Type \'cvt -h\' for more info', icon=ICON_WARNING)
+
+
         elif len(args) == 2:
-            t = 2
+            amount, ctype = args[0], args[1].upper()
+            if amount.replace('.', '', 1).isdigit() and ctype in cur_dic.values():
+                res = exchange(amount,ctype,datas)
+                wf.add_item(title = '= ' + str(res['total']) + " "+res['type'],icon='icon/{0}.png'.format(res['type'],valid='yes',arg = str(res['total'])))
+            else:
+                wf.add_item(title = 'Invalid input', subtitle='Type \'cvt -h\' for more info', icon=ICON_WARNING)
+
         else:
-            wf.add_item('Type \'cvt -h\' for more info')
-    # temp = ''.join()
-    # args = temp.strip(" ").split(" ")
-    # if len(args) == 0:
-
-
-            
-    # elif len(args) == 1:
-    #     args = args
-    # elif len(args) == 2:
-    #     args = args
-    
+            wf.add_item(title = 'Invalid input', subtitle='Type \'cvt -h\' for more info', icon=ICON_WARNING)
     
     wf.send_feedback()
 
@@ -85,6 +100,7 @@ def main(wf):
 
 if __name__ == '__main__':
     wf = Workflow(libraries=['./lib'])
+    log = wf.logger
     sys.exit(wf.run(main))
     print()
 
