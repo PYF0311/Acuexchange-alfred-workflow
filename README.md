@@ -1,2 +1,2 @@
 # Accurate Currency Exchange
-## On loading...
+## On loading
